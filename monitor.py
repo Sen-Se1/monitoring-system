@@ -6,10 +6,20 @@ Script principal de surveillance système et services - Multi-plateforme
 import time
 import logging
 import platform
-from config.settings import MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, LOG_FILE, LOG_LEVEL
+from config.settings import (
+    MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
+    DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
+    LOG_FILE, LOG_LEVEL, 
+    AUTO_HEALING_ENABLED, MAX_RESTART_ATTEMPTS, CLEANUP_PATHS,
+    ACTION_LOG_FILE, LOG_ACTIONS_ENABLED
+)
 from monitoring.system_monitor import SystemMonitor
 from monitoring.service_monitor import ServiceMonitor
 from monitoring.alert_manager import AlertManager
+from autohealing.service_healer import ServiceHealer
+from autohealing.system_healer import SystemHealer
+from autohealing.action_logger import ActionLogger
+from autohealing.triggers import AutoHealingTriggers
 
 # Configuration du logging
 logging.basicConfig(
@@ -22,7 +32,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def display_system_info():
+def display_system_info(auto_healing_enabled):
     """Affiche les informations du système"""
     system = platform.system()
     version = platform.version()
@@ -30,6 +40,7 @@ def display_system_info():
     print(f"⏰ Intervalle: {MONITORING_INTERVAL} secondes")
     print(f"📊 Seuils - CPU: {CPU_THRESHOLD}%, Mémoire: {MEMORY_THRESHOLD}%, Disque: {DISK_THRESHOLD}%, Réseau: {NETWORK_THRESHOLD}MB")
     print(f"🔧 Services surveillés: {', '.join(MONITORED_SERVICES)}")
+    print(f"⚡ Auto-réparation: {'ACTIVÉE' if auto_healing_enabled else 'DÉSACTIVÉE'}")
 
 def display_system_metrics(metrics):
     """Affiche les métriques système"""
@@ -47,6 +58,19 @@ def display_services_status(services_status):
         status_text = "Actif" if status else "Arrêté"
         print(f"   {status_icon} {service}: {status_text}")
 
+def display_healing_actions(healing_actions):
+    """Affiche les actions d'auto-réparation"""
+    if not healing_actions:
+        return ""
+    
+    output = "🔧 ACTIONS AUTO-RÉPARATION:\n"
+    for action in healing_actions:
+        icon = "✅" if action['success'] else "❌"
+        action_type = action['type']
+        message = action['message']
+        output += f"   {icon} {action_type}: {message}\n"
+    return output
+
 def log_alerts(alerts):
     """Log les alertes dans le fichier"""
     for alert in alerts:
@@ -55,13 +79,20 @@ def log_alerts(alerts):
 def main():
     """Fonction principale de surveillance"""
     print("🚀 Démarrage du système de surveillance...")
-    display_system_info()
-    print("=" * 60)
     
-    # Initialisation des modules
+    # Initialisation des modules de surveillance
     system_monitor = SystemMonitor()
     service_monitor = ServiceMonitor(MONITORED_SERVICES)
     alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD)
+    
+    # Initialisation des modules d'auto-réparation
+    service_healer = ServiceHealer(max_restart_attempts=MAX_RESTART_ATTEMPTS)
+    system_healer = SystemHealer(cleanup_paths=CLEANUP_PATHS)
+    action_logger = ActionLogger(log_file=ACTION_LOG_FILE, enabled=LOG_ACTIONS_ENABLED)
+    healing_triggers = AutoHealingTriggers(service_healer, system_healer, action_logger)
+    
+    display_system_info(AUTO_HEALING_ENABLED)
+    print("=" * 60)
     
     cycle_count = 0
     
@@ -79,6 +110,11 @@ def main():
             service_alerts = alert_manager.check_services_alerts(services_status)
             all_alerts = system_alerts + service_alerts
             
+            # Auto-réparation si activée
+            healing_actions = []
+            if AUTO_HEALING_ENABLED:
+                healing_actions = healing_triggers.evaluate_and_heal(metrics, services_status)
+            
             # Affichage des résultats
             display_system_metrics(metrics)
             display_services_status(services_status)
@@ -87,16 +123,37 @@ def main():
             alerts_display = alert_manager.format_alerts_for_display(all_alerts)
             print(alerts_display)
             
+            # Affichage des actions d'auto-réparation
+            if healing_actions:
+                healing_display = display_healing_actions(healing_actions)
+                print(healing_display)
+            
             # Log des alertes
             log_alerts(all_alerts)
             
             print("-" * 60)
+            
+            # Affichage des statistiques occasionnellement
+            if cycle_count % 10 == 0:
+                stats = healing_triggers.get_healing_status()
+                print(f"📈 Statistiques auto-réparation: {stats['service_stats']['successful_restarts']} services redémarrés, "
+                      f"{stats['system_stats']['cleanup_actions']} nettoyages effectués")
             
             # Attente avant le prochain check
             time.sleep(MONITORING_INTERVAL)
             
     except KeyboardInterrupt:
         print("\n🛑 Arrêt du système de surveillance")
+        
+        # Afficher les statistiques finales
+        if AUTO_HEALING_ENABLED:
+            stats = healing_triggers.get_healing_status()
+            print(f"\n📊 Statistiques finales auto-réparation:")
+            print(f"   Services redémarrés: {stats['service_stats']['successful_restarts']}")
+            print(f"   Nettoyages disque: {stats['system_stats']['cleanup_actions']}")
+            print(f"   Caches vidés: {stats['system_stats']['cache_clears']}")
+            print(f"   Processus terminés: {stats['system_stats']['process_kills']}")
+        
         logger.info("Arrêt du système de surveillance")
     except Exception as e:
         error_msg = f"Erreur critique: {e}"

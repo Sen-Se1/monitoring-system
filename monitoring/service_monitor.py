@@ -31,22 +31,22 @@ class ServiceMonitor:
             results[service] = self.check_service(service)
         return results
     
-    def get_service_details(self, service_name):
-        """Récupère des détails supplémentaires sur un service"""
-        try:
-            # Statut détaillé
-            result = subprocess.run(
-                ['systemctl', 'show', service_name, '--property=ActiveState,SubState,MainPID'],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            details = {}
-            for line in result.stdout.strip().split('\n'):
-                if '=' in line:
-                    key, value = line.split('=', 1)
-                    details[key] = value
-            return details
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des détails pour {service_name}: {e}")
-            return {}
+    # def get_service_details(self, service_name):
+    #     """Récupère des détails supplémentaires sur un service"""
+    #     try:
+    #         # Statut détaillé
+    #         result = subprocess.run(
+    #             ['systemctl', 'show', service_name, '--property=ActiveState,SubState,MainPID'],
+    #             capture_output=True,
+    #             text=True,
+    #             timeout=5
+    #         )
+    #         details = {}
+    #         for line in result.stdout.strip().split('\n'):
+    #             if '=' in line:
+    #                 key, value = line.split('=', 1)
+    #                 details[key] = value
+    #         return details
+    #     except Exception as e:
+    #         logger.error(f"Erreur lors de la récupération des détails pour {service_name}: {e}")
+    #         return {}

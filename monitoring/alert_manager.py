@@ -10,7 +10,7 @@ class AlertManager:
         self.network_threshold = network_threshold
     
     def check_thresholds(self, metrics):
-        """Vérifie si les métriques dépassent les seuils"""
+        """Vérifie si les métriques dépassent les seuils (sans auto-réparation)"""
         alerts = []
         
         # Vérification CPU
@@ -65,7 +65,7 @@ class AlertManager:
         return alerts
     
     def check_services_alerts(self, services_status):
-        """Vérifie les services arrêtés"""
+        """Vérifie les services arrêtés (sans auto-réparation)"""
         alerts = []
         for service, status in services_status.items():
             if not status:
