@@ -3,10 +3,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AlertManager:
-    def __init__(self, cpu_threshold, memory_threshold, disk_threshold):
+    def __init__(self, cpu_threshold, memory_threshold, disk_threshold, network_threshold):
         self.cpu_threshold = cpu_threshold
         self.memory_threshold = memory_threshold
         self.disk_threshold = disk_threshold
+        self.network_threshold = network_threshold
     
     def check_thresholds(self, metrics):
         """Vérifie si les métriques dépassent les seuils"""
@@ -46,6 +47,19 @@ class AlertManager:
                 'threshold': self.disk_threshold,
                 'severity': severity,
                 'message': f"🚨 {severity} - Espace disque faible: {disk_value}% (seuil: {self.disk_threshold}%)"
+            })
+        
+        # Vérification Réseau
+        network_data = metrics['network']
+        total_network_mb = network_data['sent_mb'] + network_data['recv_mb']
+        if total_network_mb > self.network_threshold:
+            severity = "CRITIQUE" if total_network_mb > (self.network_threshold * 2) else "AVERTISSEMENT"
+            alerts.append({
+                'type': 'high_network',
+                'value': total_network_mb,
+                'threshold': self.network_threshold,
+                'severity': severity,
+                'message': f"🚨 {severity} - Utilisation réseau élevée: {total_network_mb:.1f}MB (seuil: {self.network_threshold}MB)"
             })
         
         return alerts

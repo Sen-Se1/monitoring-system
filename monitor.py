@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Script principal de surveillance système et services
+Script principal de surveillance système et services - Multi-plateforme
 """
 
 import time
 import logging
-from config.settings import MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, MONITORED_SERVICES, LOG_FILE, LOG_LEVEL
+import platform
+from config.settings import MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, LOG_FILE, LOG_LEVEL
 from monitoring.system_monitor import SystemMonitor
 from monitoring.service_monitor import ServiceMonitor
 from monitoring.alert_manager import AlertManager
@@ -21,11 +22,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def display_system_info():
+    """Affiche les informations du système"""
+    system = platform.system()
+    version = platform.version()
+    print(f"💻 Système: {system} {version}")
+    print(f"⏰ Intervalle: {MONITORING_INTERVAL} secondes")
+    print(f"📊 Seuils - CPU: {CPU_THRESHOLD}%, Mémoire: {MEMORY_THRESHOLD}%, Disque: {DISK_THRESHOLD}%, Réseau: {NETWORK_THRESHOLD}MB")
+    print(f"🔧 Services surveillés: {', '.join(MONITORED_SERVICES)}")
+
 def display_system_metrics(metrics):
     """Affiche les métriques système"""
     print(f"📊 [{metrics['timestamp']}] Métriques système:")
     print(f"   CPU: {metrics['cpu']:.1f}% | Mémoire: {metrics['memory']:.1f}% | Disque: {metrics['disk']:.1f}%")
-    print(f"   Réseau: ↑{metrics['network']['sent_mb']:.1f}MB ↓{metrics['network']['recv_mb']:.1f}MB")
+    network_data = metrics['network']
+    total_network = network_data['sent_mb'] + network_data['recv_mb']
+    print(f"   Réseau: ↑{network_data['sent_mb']:.1f}MB ↓{network_data['recv_mb']:.1f}MB (Total: {total_network:.1f}MB)")
 
 def display_services_status(services_status):
     """Affiche le statut des services"""
@@ -43,15 +55,13 @@ def log_alerts(alerts):
 def main():
     """Fonction principale de surveillance"""
     print("🚀 Démarrage du système de surveillance...")
-    print(f"⏰ Intervalle: {MONITORING_INTERVAL} secondes")
-    print(f"📊 Seuils - CPU: {CPU_THRESHOLD}%, Mémoire: {MEMORY_THRESHOLD}%, Disque: {DISK_THRESHOLD}%")
-    print(f"🔧 Services surveillés: {', '.join(MONITORED_SERVICES)}")
+    display_system_info()
     print("=" * 60)
     
     # Initialisation des modules
     system_monitor = SystemMonitor()
     service_monitor = ServiceMonitor(MONITORED_SERVICES)
-    alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD)
+    alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD)
     
     cycle_count = 0
     
