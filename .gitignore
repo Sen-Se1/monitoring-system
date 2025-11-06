@@ -24,14 +24,10 @@ dist/
 *.log
 *.out
 *.err
-logs/
-log/
-monitor.log
 
-# Keep the logs folder structure, but ignore its contents
-# (Uncomment the next two lines if you want to keep the folder but not its files)
-# logs/*
-# !logs/.gitkeep
+# Ignore all files in logs but keep the folder
+logs/*
+!logs/.gitkeep
 
 # ==============================
 # IDEs & Editors
