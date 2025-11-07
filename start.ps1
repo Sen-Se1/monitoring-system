@@ -26,4 +26,4 @@ if (-not (Test-Path "logs")) {
     New-Item -ItemType Directory -Path "logs" | Out-Null
 }
 
-python monitor.py
+python run_monitoring_with_dashboard.py
