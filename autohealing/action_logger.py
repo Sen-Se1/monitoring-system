@@ -11,13 +11,20 @@ class ActionLogger:
         # Créer le dossier logs si nécessaire
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
         
+        # Écrire l'en-tête si le fichier est nouveau
+        if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write("# timestamp - action_type - status - message\n")
+        
         # Configuration du logger d'actions
         self.logger = logging.getLogger('action_logger')
         self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
         
         # Éviter les handlers dupliqués
         if not self.logger.handlers:
-            handler = logging.FileHandler(log_file)
+            handler = logging.FileHandler(log_file, encoding='utf-8')
+            # Format personnalisé : timestamp - action_type - status - message
             formatter = logging.Formatter('%(asctime)s - %(message)s')
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
@@ -27,18 +34,13 @@ class ActionLogger:
         if not self.enabled:
             return
         
-        action_record = {
-            'timestamp': datetime.now().isoformat(),
-            'action_type': action_type,
-            'status': status,
-            'message': message,
-            'details': details or {}
-        }
+        # Formater le message dans le format: action_type - status - message
+        formatted_message = f"{action_type} - {status} - {message}"
         
-        # Log structuré en JSON
-        self.logger.info(json.dumps(action_record))
+        # Logger avec le format personnalisé
+        self.logger.info(formatted_message)
         
-        # Also log to console for immediate feedback
+        # Log console séparé avec emojis
         status_icon = "✅" if status == "success" else "❌" if status == "failed" else "⚠️"
         print(f"   {status_icon} {action_type}: {message}")
     
@@ -46,10 +48,10 @@ class ActionLogger:
         """Enregistre spécifiquement un redémarrage de service"""
         status = "success" if success else "failed"
         self.log_action(
-            action_type="service_restart",
+            action_type=f"service_restart.{service_name}",
             status=status,
             details=details,
-            message=f"Service {service_name} - {message}"
+            message=message
         )
     
     def log_system_healing(self, action_type, success, message, details=None):
@@ -61,13 +63,3 @@ class ActionLogger:
             details=details,
             message=message
         )
-    
-    # def get_recent_actions(self, limit=50):
-    #     """Récupère les actions récentes depuis le fichier de log"""
-    #     try:
-    #         with open(self.log_file, 'r') as f:
-    #             lines = f.readlines()[-limit:]
-    #             actions = [json.loads(line.split(' - ', 1)[1]) for line in lines]
-    #             return actions
-    #     except (FileNotFoundError, json.JSONDecodeError):
-    #         return []
