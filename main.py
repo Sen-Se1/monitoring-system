@@ -7,7 +7,7 @@ import threading
 import time
 import os
 import sys
-from monitor import main as monitoring_main
+from monitoring.monitor import main as monitoring_main
 from visualization.dashboard import MonitoringDashboard
 
 def run_monitoring():

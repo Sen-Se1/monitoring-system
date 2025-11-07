@@ -26,4 +26,4 @@ fi
 echo "📁 Création des dossiers..."
 mkdir -p logs
 
-python run_monitoring_with_dashboard.py
+python main.py

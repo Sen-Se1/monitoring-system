@@ -6,7 +6,7 @@ DISK_THRESHOLD = 90.0
 NETWORK_THRESHOLD = 100.0  # MB par intervalle
 
 # Services à surveiller
-MONITORED_SERVICES = ["ssh", "cron", "dbus", "network-manager"]
+MONITORED_SERVICES = ["cron", "dbus", "apache2"]
 
 # Configuration des logs - FORMAT JSON ARRAY MAINTENANT
 LOG_FILE = "logs/monitoring.json"

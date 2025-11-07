@@ -52,7 +52,7 @@ class MonitoringDashboard:
                     'type': entry['alert_type'],
                     'severity': entry['severity'],
                     'message': entry['message'],
-                    'service': entry['details'].get('service', 'N/A')
+                    'service': entry['details'].get('service', 'Système')
                 })
         return pd.DataFrame(alerts)
     
@@ -66,7 +66,7 @@ class MonitoringDashboard:
                     'type': entry['action_type'],
                     'status': entry['status'],
                     'message': entry['message'],
-                    'service': entry.get('service', 'N/A')
+                    'service': entry.get('service', 'Système')
                 })
         return pd.DataFrame(actions)
     
@@ -81,6 +81,32 @@ class MonitoringDashboard:
                     'status': entry['values']['status']
                 })
         return pd.DataFrame(service_data)
+    
+    def get_latest_service_status(self):
+        """Récupère le dernier statut de chaque service"""
+        df = self.get_service_status()
+        if df.empty:
+            return []
+        
+        # Obtenir le dernier statut pour chaque service
+        latest_status = df.sort_values('timestamp').groupby('service').last().reset_index()
+        return latest_status.to_dict('records')
+    
+    def get_recent_alerts(self, limit=10):
+        """Récupère les alertes récentes"""
+        df = self.get_alerts()
+        if df.empty:
+            return []
+        
+        return df.sort_values('timestamp', ascending=False).head(limit).to_dict('records')
+    
+    def get_recent_actions(self, limit=10):
+        """Récupère les actions récentes"""
+        df = self.get_actions()
+        if df.empty:
+            return []
+        
+        return df.sort_values('timestamp', ascending=False).head(limit).to_dict('records')
     
     def create_system_metrics_chart(self):
         """Crée le graphique des métriques système"""
@@ -120,27 +146,24 @@ class MonitoringDashboard:
             row=2, col=2
         )
         
-        fig.update_layout(height=600, showlegend=False, title_text="Évolution des Métriques Système")
+        fig.update_layout(height=400, showlegend=False, title_text="Évolution des Métriques Système")
         return fig
     
-    def create_alerts_chart(self):
-        """Crée le graphique des alertes"""
+    def create_alerts_by_service_chart(self):
+        """Crée le graphique des alertes par service"""
         df = self.get_alerts()
         if df.empty:
             return go.Figure().add_annotation(text="Aucune alerte enregistrée", showarrow=False)
         
-        # Alertes par type
-        alert_counts = df['type'].value_counts()
-        fig1 = px.pie(values=alert_counts.values, names=alert_counts.index, 
-                     title="Répartition des Alertes par Type")
-        
-        # Alertes par sévérité
-        severity_counts = df['severity'].value_counts()
-        fig2 = px.bar(x=severity_counts.index, y=severity_counts.values,
-                     title="Alertes par Sévérité", color=severity_counts.index,
-                     color_discrete_map={'CRITIQUE': 'red', 'AVERTISSEMENT': 'orange'})
-        
-        return fig1, fig2
+        # Alertes par service
+        service_counts = df['service'].value_counts()
+        fig = px.bar(x=service_counts.index, y=service_counts.values,
+                     title="Nombre d'Incidents par Service",
+                     labels={'x': 'Service', 'y': "Nombre d'Alertes"},
+                     color=service_counts.values,
+                     color_continuous_scale='reds')
+        fig.update_layout(showlegend=False, height=300)
+        return fig
     
     def create_actions_chart(self):
         """Crée le graphique des actions"""
@@ -152,72 +175,219 @@ class MonitoringDashboard:
         action_status = df.groupby(['type', 'status']).size().reset_index(name='count')
         fig = px.bar(action_status, x='type', y='count', color='status',
                     title="Actions par Type et Statut",
+                    labels={'type': "Type d'Action", 'count': 'Nombre'},
                     color_discrete_map={'SUCCESS': 'green', 'FAILED': 'red'})
-        
+        fig.update_layout(height=300)
         return fig
     
-    def create_service_status_chart(self):
-        """Crée le graphique du statut des services"""
-        df = self.get_service_status()
-        if df.empty:
-            return go.Figure().add_annotation(text="Aucun statut de service enregistré", showarrow=False)
+    def create_service_status_table(self):
+        """Crée un tableau HTML pour l'état des services"""
+        services = self.get_latest_service_status()
         
-        # Dernier statut de chaque service
-        latest_status = df.sort_values('timestamp').groupby('service').last().reset_index()
+        if not services:
+            return html.Div("Aucun service surveillé", className="text-muted")
         
-        fig = px.bar(latest_status, x='service', y=[1]*len(latest_status), color='status',
-                    title="Statut Actuel des Services",
-                    color_discrete_map={'active': 'green', 'inactive': 'red'},
-                    labels={'y': ''})
+        rows = []
+        for service in services:
+            status_icon = "🟢" if service['status'] == 'active' else "🔴"
+            status_text = "Actif" if service['status'] == 'active' else "Arrêté"
+            status_color = "success" if service['status'] == 'active' else "danger"
+            
+            row = dbc.ListGroupItem([
+                html.Div([
+                    html.Span(status_icon, style={'fontSize': '20px', 'marginRight': '10px'}),
+                    html.Strong(service['service']),
+                    html.Span(status_text, className=f"badge bg-{status_color} ms-2")
+                ], className="d-flex justify-content-between align-items-center")
+            ])
+            rows.append(row)
         
-        fig.update_layout(showlegend=True)
-        return fig
+        return dbc.ListGroup(rows, flush=True)
+    
+    def create_alerts_table(self):
+        """Crée un tableau HTML pour les alertes"""
+        alerts = self.get_recent_alerts(10)
+        
+        if not alerts:
+            return html.Div([
+                html.Div("✅ Aucune alerte active", className="text-success text-center p-3")
+            ], style={'border': '1px solid #28a745', 'borderRadius': '5px'})
+        
+        rows = []
+        for alert in alerts:
+            severity_icon = "🔴" if alert['severity'] == 'CRITIQUE' else "🟡"
+            severity_color = "danger" if alert['severity'] == 'CRITIQUE' else "warning"
+            
+            row = dbc.ListGroupItem([
+                html.Div([
+                    html.Span(severity_icon, style={'fontSize': '16px', 'marginRight': '8px'}),
+                    html.Span(alert['message'], style={'flex': 1}),
+                    html.Small(alert['timestamp'][11:19], className="text-muted")
+                ], className="d-flex justify-content-between align-items-center")
+            ], color=severity_color)
+            rows.append(row)
+        
+        return dbc.ListGroup(rows, flush=True)
+    
+    def create_actions_table(self):
+        """Crée un tableau HTML pour les actions d'auto-réparation"""
+        actions = self.get_recent_actions(10)
+        
+        if not actions:
+            return html.Div([
+                html.Div("Aucune action récente", className="text-muted text-center p-3")
+            ], style={'border': '1px solid #6c757d', 'borderRadius': '5px'})
+        
+        rows = []
+        for action in actions:
+            status_icon = "✅" if action['status'] == 'SUCCESS' else "❌"
+            status_color = "success" if action['status'] == 'SUCCESS' else "danger"
+            
+            # Extraire le nom du service si disponible
+            service_name = action.get('service', 'Système')
+            if service_name and service_name != 'N/A':
+                action_text = f"{service_name}: {action['message']}"
+            else:
+                action_text = action['message']
+            
+            row = dbc.ListGroupItem([
+                html.Div([
+                    html.Span(status_icon, style={'fontSize': '16px', 'marginRight': '8px'}),
+                    html.Span(action_text, style={'flex': 1, 'fontSize': '14px'}),
+                    html.Small(action['timestamp'][11:19], className="text-muted")
+                ], className="d-flex justify-content-between align-items-center")
+            ], color=status_color)
+            rows.append(row)
+        
+        return dbc.ListGroup(rows, flush=True)
     
     def create_dashboard(self):
         """Crée le tableau de bord Dash"""
-        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
         
         app.layout = dbc.Container([
+            # Header
             dbc.Row([
-                dbc.Col(html.H1("📊 Tableau de Bord - Surveillance Système", 
-                               className="text-center mb-4"), width=12)
+                dbc.Col([
+                    html.H1("📊 Tableau de Bord - Surveillance Système", 
+                           className="text-center mb-2 mt-3",
+                           style={'color': '#2c3e50', 'fontWeight': 'bold'}),
+                    html.Hr(style={'borderTop': '2px solid #3498db'})
+                ], width=12)
             ]),
             
-            # Métriques en temps réel
+            # Real-time Metrics Card
             dbc.Row([
-                dbc.Col(html.Div(id="live-metrics"), width=12)
-            ], className="mb-4"),
-            
-            # Graphiques principaux
-            dbc.Row([
-                dbc.Col(dcc.Graph(id="system-metrics-chart"), width=12, className="mb-4"),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Div("⚡ MÉTRIQUES TEMPS RÉEL", 
+                                            className="text-uppercase small text-muted mb-2"),
+                                    html.Div(id="live-metrics-details")
+                                ], width=12)
+                            ])
+                        ])
+                    ], color="light", className="mb-4 shadow-sm")
+                ], width=12)
             ]),
             
+            # Main Content - Two Columns
             dbc.Row([
-                dbc.Col(dcc.Graph(id="alerts-pie-chart"), width=6),
-                dbc.Col(dcc.Graph(id="alerts-bar-chart"), width=6),
-            ], className="mb-4"),
-            
-            dbc.Row([
-                dbc.Col(dcc.Graph(id="actions-chart"), width=6),
-                dbc.Col(dcc.Graph(id="service-status-chart"), width=6),
+                # Left Column - Charts
+                dbc.Col([
+                    # System Metrics Chart
+                    dbc.Card([
+                        dbc.CardHeader("📈 Évolution des Métriques Système", 
+                                      className="fw-bold bg-primary text-white"),
+                        dbc.CardBody([
+                            dcc.Graph(id="system-metrics-chart")
+                        ])
+                    ], className="mb-4 shadow-sm"),
+                    
+                    # Bottom Charts Row
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("📊 Incidents par Service", 
+                                              className="fw-bold bg-warning text-dark"),
+                                dbc.CardBody([
+                                    dcc.Graph(id="alerts-by-service-chart")
+                                ])
+                            ], className="shadow-sm")
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("🔧 Actions par Type", 
+                                              className="fw-bold bg-info text-white"),
+                                dbc.CardBody([
+                                    dcc.Graph(id="actions-chart")
+                                ])
+                            ], className="shadow-sm")
+                        ], width=6)
+                    ])
+                ], width=8),
+                
+                # Right Column - Status Panels
+                dbc.Col([
+                    # Service Status
+                    dbc.Card([
+                        dbc.CardHeader("🔧 État des Services", 
+                                      className="fw-bold bg-success text-white"),
+                        dbc.CardBody([
+                            html.Div(id="service-status-table", 
+                                    style={'maxHeight': '200px', 'overflowY': 'auto'})
+                        ])
+                    ], className="mb-4 shadow-sm"),
+                    
+                    # Recent Alerts
+                    dbc.Card([
+                        dbc.CardHeader("🚨 ALERTES ACTIVES", 
+                                      className="fw-bold bg-danger text-white"),
+                        dbc.CardBody([
+                            html.Div(id="alerts-table", 
+                                    style={'maxHeight': '200px', 'overflowY': 'auto'})
+                        ])
+                    ], className="mb-4 shadow-sm"),
+                    
+                    # Recent Actions
+                    dbc.Card([
+                        dbc.CardHeader("⚡ ACTIONS RÉCENTES", 
+                                      className="fw-bold bg-secondary text-white"),
+                        dbc.CardBody([
+                            html.Div(id="actions-table", 
+                                    style={'maxHeight': '200px', 'overflowY': 'auto'})
+                        ])
+                    ], className="shadow-sm")
+                ], width=4)
             ]),
             
-            # Intervalle de mise à jour
+            # Footer
+            dbc.Row([
+                dbc.Col([
+                    html.Hr(),
+                    html.P("Système de Surveillance - Mise à jour automatique toutes les 5 secondes", 
+                          className="text-center text-muted small mt-3")
+                ], width=12)
+            ]),
+            
+            # Update Interval
             dcc.Interval(
                 id='interval-component',
                 interval=5*1000,  # 5 secondes
                 n_intervals=0
             )
-        ], fluid=True)
+        ], fluid=True, style={'backgroundColor': '#f8f9fa'})
         
         @app.callback(
             [Output('system-metrics-chart', 'figure'),
-             Output('alerts-pie-chart', 'figure'),
-             Output('alerts-bar-chart', 'figure'),
+             Output('alerts-by-service-chart', 'figure'),
              Output('actions-chart', 'figure'),
-             Output('service-status-chart', 'figure'),
-             Output('live-metrics', 'children')],
+             Output('live-metrics-details', 'children'),
+             Output('service-status-table', 'children'),
+             Output('alerts-table', 'children'),
+             Output('actions-table', 'children')],
             [Input('interval-component', 'n_intervals')]
         )
         def update_dashboard(n):
@@ -229,41 +399,109 @@ class MonitoringDashboard:
             
             # Créer les graphiques
             system_fig = self.create_system_metrics_chart()
-            alerts_fig1, alerts_fig2 = self.create_alerts_chart()
+            alerts_service_fig = self.create_alerts_by_service_chart()
             actions_fig = self.create_actions_chart()
-            service_fig = self.create_service_status_chart()
+            
+            # Créer les tableaux
+            service_table = self.create_service_status_table()
+            alerts_table = self.create_alerts_table()
+            actions_table = self.create_actions_table()
             
             # Métriques en temps réel
             df_system = self.get_system_metrics()
             df_alerts = self.get_alerts()
             df_actions = self.get_actions()
+            df_services = self.get_service_status()
             
             if not df_system.empty:
                 latest_metrics = df_system.iloc[-1]
-                live_metrics = dbc.Card([
-                    dbc.CardBody([
-                        dbc.Row([
-                            dbc.Col(html.H4(f"CPU: {latest_metrics['cpu']:.1f}%", 
-                                          style={'color': 'red' if latest_metrics['cpu'] > 80 else 'green'}), width=3),
-                            dbc.Col(html.H4(f"Mémoire: {latest_metrics['memory']:.1f}%", 
-                                          style={'color': 'red' if latest_metrics['memory'] > 85 else 'green'}), width=3),
-                            dbc.Col(html.H4(f"Disque: {latest_metrics['disk']:.1f}%", 
-                                          style={'color': 'red' if latest_metrics['disk'] > 90 else 'green'}), width=3),
-                            dbc.Col(html.H4(f"Réseau: {latest_metrics['network']:.1f}MB", 
-                                          style={'color': 'orange'}), width=3),
-                        ]),
-                        dbc.Row([
-                            dbc.Col(html.H5(f"Alertes: {len(df_alerts)}"), width=3),
-                            dbc.Col(html.H5(f"Actions: {len(df_actions)}"), width=3),
-                            dbc.Col(html.H5(f"Services: {len(self.get_service_status()['service'].unique())}"), width=3),
-                            dbc.Col(html.H5(f"Dernière MAJ: {datetime.now().strftime('%H:%M:%S')}"), width=3),
-                        ])
-                    ])
-                ], color="light")
+                
+                # Create metric cards
+                metrics_row = dbc.Row([
+                    # CPU
+                    dbc.Col([
+                        html.Div([
+                            html.Div("💻 CPU", className="small text-muted"),
+                            html.H4(f"{latest_metrics['cpu']:.1f}%", 
+                                   style={'color': 'red' if latest_metrics['cpu'] > 80 else 'green',
+                                          'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=2),
+                    
+                    # Memory
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🧠 Mémoire", className="small text-muted"),
+                            html.H4(f"{latest_metrics['memory']:.1f}%", 
+                                   style={'color': 'red' if latest_metrics['memory'] > 85 else 'green',
+                                          'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=2),
+                    
+                    # Disk
+                    dbc.Col([
+                        html.Div([
+                            html.Div("💾 Disque", className="small text-muted"),
+                            html.H4(f"{latest_metrics['disk']:.1f}%", 
+                                   style={'color': 'red' if latest_metrics['disk'] > 90 else 'green',
+                                          'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=2),
+                    
+                    # Network
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🌐 Réseau", className="small text-muted"),
+                            html.H4(f"{latest_metrics['network']:.1f}MB", 
+                                   style={'color': 'orange', 'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=2),
+                    
+                    # Alerts
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🚨 Alertes", className="small text-muted"),
+                            html.H4(f"{len(df_alerts)}", 
+                                   style={'color': 'red' if len(df_alerts) > 0 else 'green',
+                                          'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=1),
+                    
+                    # Actions
+                    dbc.Col([
+                        html.Div([
+                            html.Div("⚡ Actions", className="small text-muted"),
+                            html.H4(f"{len(df_actions)}", 
+                                   style={'color': 'blue', 'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=1),
+                    
+                    # Services
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🔧 Services", className="small text-muted"),
+                            html.H4(f"{len(df_services['service'].unique()) if not df_services.empty else 0}", 
+                                   style={'color': 'purple', 'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=1),
+                    
+                    # Last Update
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🕐 Dernière MAJ", className="small text-muted"),
+                            html.H4(f"{datetime.now().strftime('%H:%M:%S')}", 
+                                   style={'color': 'gray', 'fontWeight': 'bold'})
+                        ], className="text-center")
+                    ], width=1)
+                ])
+                
+                live_metrics = metrics_row
             else:
-                live_metrics = dbc.Alert("En attente de données...", color="warning")
+                live_metrics = dbc.Alert("⏳ En attente de données de surveillance...", 
+                                       color="warning", className="text-center")
             
-            return system_fig, alerts_fig1, alerts_fig2, actions_fig, service_fig, live_metrics
+            return (system_fig, alerts_service_fig, actions_fig, live_metrics, 
+                   service_table, alerts_table, actions_table)
         
         return app
     
