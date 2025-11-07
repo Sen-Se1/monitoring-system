@@ -74,7 +74,7 @@ class AlertManager:
         return alerts
     
     def format_alerts_for_display(self, alerts):
-        """Formate les alertes pour l'affichage"""
+        """Formate les alertes pour l'affichage (avec emojis)"""
         if not alerts:
             return "✅ Tous les systèmes sont normaux"
         

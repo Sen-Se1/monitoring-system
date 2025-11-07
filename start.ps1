@@ -26,4 +26,4 @@ if (-not (Test-Path "logs")) {
     New-Item -ItemType Directory -Path "logs" | Out-Null
 }
 
-python main.p
+python main.py

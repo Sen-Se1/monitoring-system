@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 from threading import Lock
 
@@ -16,27 +17,58 @@ class JSONArrayLogger:
             with open(log_file, 'w', encoding='utf-8') as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
     
+    def _remove_emojis(self, text):
+        """Supprime les emojis d'un texte"""
+        if not isinstance(text, str):
+            return text
+        
+        # Pattern pour détecter les emojis
+        emoji_pattern = re.compile(
+            "["
+            u"\U0001F600-\U0001F64F"
+            u"\U0001F300-\U0001F5FF"
+            u"\U0001F680-\U0001F6FF"
+            u"\U0001F1E0-\U0001F1FF"
+            u"\U00002702-\U000027B0"
+            u"\U000024C2-\U0001F251"
+            "]+", flags=re.UNICODE
+        )
+        return emoji_pattern.sub(r'', text)
+    
+    def _clean_log_data(self, log_data):
+        """Nettoie les emojis des données de log"""
+        if isinstance(log_data, dict):
+            cleaned = {}
+            for key, value in log_data.items():
+                if key == 'message' and isinstance(value, str):
+                    cleaned[key] = self._remove_emojis(value)
+                else:
+                    cleaned[key] = self._clean_log_data(value)
+            return cleaned
+        elif isinstance(log_data, list):
+            return [self._clean_log_data(item) for item in log_data]
+        else:
+            return log_data
+    
     def _append_log(self, log_data):
-        """Ajoute une entrée au tableau JSON"""
+        """Ajoute une entrée au tableau JSON (sans emojis)"""
+        cleaned_log_data = self._clean_log_data(log_data)
+        
         with self.lock:
             try:
-                # Lire le contenu existant
                 if os.path.getsize(self.log_file) > 0:
                     with open(self.log_file, 'r', encoding='utf-8') as f:
                         logs = json.load(f)
                 else:
                     logs = []
                 
-                # Ajouter la nouvelle entrée
-                logs.append(log_data)
+                logs.append(cleaned_log_data)
                 
-                # Réécrire le fichier
                 with open(self.log_file, 'w', encoding='utf-8') as f:
                     json.dump(logs, f, indent=2, ensure_ascii=False)
                     
             except json.JSONDecodeError:
-                # Si le fichier est corrompu, recommencer
-                logs = [log_data]
+                logs = [cleaned_log_data]
                 with open(self.log_file, 'w', encoding='utf-8') as f:
                     json.dump(logs, f, indent=2, ensure_ascii=False)
             except Exception as e:
@@ -52,7 +84,6 @@ class JSONArrayLogger:
             'metadata': metadata or {}
         }
         self._append_log(log_data)
-        # REMOVED console output - let monitor.py handle display
     
     def log_alert(self, alert_type, severity, message, details=None):
         """Log une alerte (SANS affichage console)"""
@@ -61,7 +92,7 @@ class JSONArrayLogger:
             'event_type': 'alert',
             'alert_type': alert_type,
             'severity': severity,
-            'message': message,
+            'message': message,  # Les emojis seront nettoyés dans _append_log
             'details': details or {}
         }
         self._append_log(log_data)
@@ -75,7 +106,7 @@ class JSONArrayLogger:
             'action_type': action_type,
             'status': status,
             'service': service,
-            'message': message,
+            'message': message,  # Les emojis seront nettoyés dans _append_log
             'details': details or {}
         }
         self._append_log(log_data)
@@ -87,7 +118,7 @@ class JSONArrayLogger:
             'timestamp': datetime.now().isoformat(),
             'event_type': 'system',
             'system_event_type': event_type,
-            'message': message,
+            'message': message,  # Les emojis seront nettoyés dans _append_log
             'details': details or {}
         }
         self._append_log(log_data)

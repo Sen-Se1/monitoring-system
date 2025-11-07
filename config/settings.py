@@ -1,23 +1,23 @@
-# Configuration de surveillance
-MONITORING_INTERVAL = 10  # secondes
-CPU_THRESHOLD = 80.0
-MEMORY_THRESHOLD = 85.0
-DISK_THRESHOLD = 90.0
-NETWORK_THRESHOLD = 100.0  # MB par intervalle
+import os
+from dotenv import load_dotenv
 
-# Services à surveiller
-MONITORED_SERVICES = ["cron", "dbus", "apache2"]
+load_dotenv()
 
-# Configuration des logs - FORMAT JSON ARRAY MAINTENANT
-LOG_FILE = "logs/monitoring.json"
-LOG_LEVEL = "INFO"  # Gardé pour compatibilité mais non utilisé avec JSONArrayLogger
+MONITORING_INTERVAL = int(os.getenv('MONITORING_INTERVAL', 10))
+CPU_THRESHOLD = float(os.getenv('CPU_THRESHOLD', 80.0))
+MEMORY_THRESHOLD = float(os.getenv('MEMORY_THRESHOLD', 85.0))
+DISK_THRESHOLD = float(os.getenv('DISK_THRESHOLD', 90.0))
+NETWORK_THRESHOLD = float(os.getenv('NETWORK_THRESHOLD', 100.0))
 
-# Configuration de l'auto-réparation
-AUTO_HEALING_ENABLED = True
-MAX_RESTART_ATTEMPTS = 3
-CLEANUP_PATHS = ["/tmp", "/var/tmp", "/home/*/tmp"]
+MONITORED_SERVICES = [s.strip() for s in os.getenv('MONITORED_SERVICES', 'cron,dbus,apache2').split(',')]
 
-# Seuils pour l'auto-réparation
-AUTO_HEAL_CPU_THRESHOLD = 90.0      # CPU > 90% déclenche le nettoyage cache
-AUTO_HEAL_MEMORY_THRESHOLD = 95.0   # Mémoire > 95% déclenche kill process
-AUTO_HEAL_DISK_THRESHOLD = 95.0     # Disque > 95% déclenche nettoyage fichiers
+LOG_FILE = os.getenv('LOG_FILE', 'logs/monitoring.json')
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
+AUTO_HEALING_ENABLED = os.getenv('AUTO_HEALING_ENABLED', 'True').lower() == 'true'
+MAX_RESTART_ATTEMPTS = int(os.getenv('MAX_RESTART_ATTEMPTS', 3))
+CLEANUP_PATHS = [p.strip() for p in os.getenv('CLEANUP_PATHS', '/tmp,/var/tmp,/home/*/tmp').split(',')]
+
+AUTO_HEAL_CPU_THRESHOLD = float(os.getenv('AUTO_HEAL_CPU_THRESHOLD', 90.0))
+AUTO_HEAL_MEMORY_THRESHOLD = float(os.getenv('AUTO_HEAL_MEMORY_THRESHOLD', 95.0))
+AUTO_HEAL_DISK_THRESHOLD = float(os.getenv('AUTO_HEAL_DISK_THRESHOLD', 95.0))
