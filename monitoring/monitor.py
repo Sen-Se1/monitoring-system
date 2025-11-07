@@ -4,7 +4,7 @@ from config.settings import (
     MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
     DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
     LOG_FILE, 
-    AUTO_HEALING_ENABLED, MAX_RESTART_ATTEMPTS, CLEANUP_PATHS
+    AUTO_HEALING_ENABLED, CLEANUP_PATHS
 )
 from monitoring.system_monitor import SystemMonitor
 from monitoring.service_monitor import ServiceMonitor
@@ -104,7 +104,7 @@ def main():
     
     # Initialisation des modules d'auto-réparation
     action_logger = ActionLogger(enabled=True, json_logger=json_logger)
-    service_healer = ServiceHealer(max_restart_attempts=MAX_RESTART_ATTEMPTS, action_logger=action_logger)
+    service_healer = ServiceHealer(action_logger=action_logger)  # Plus de max_restart_attempts
     system_healer = SystemHealer(cleanup_paths=CLEANUP_PATHS)
     healing_triggers = AutoHealingTriggers(service_healer, system_healer, action_logger)
     

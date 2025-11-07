@@ -17,7 +17,7 @@ class AutoHealingTriggers:
         if not self.enabled:
             return healing_actions
         
-        # Réparation des services arrêtés
+        # Réparation des services arrêtés (toujours tentée)
         service_actions = self._heal_stopped_services(services_status)
         healing_actions.extend(service_actions)
         
@@ -28,7 +28,7 @@ class AutoHealingTriggers:
         return healing_actions
     
     def _heal_stopped_services(self, services_status):
-        """Réparation automatique des services arrêtés"""
+        """Réparation automatique des services arrêtés (toujours tentée)"""
         healing_actions = []
         
         for service, status in services_status.items():

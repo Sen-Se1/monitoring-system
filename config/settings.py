@@ -15,7 +15,6 @@ LOG_FILE = os.getenv('LOG_FILE', 'logs/monitoring.json')
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 AUTO_HEALING_ENABLED = os.getenv('AUTO_HEALING_ENABLED', 'True').lower() == 'true'
-MAX_RESTART_ATTEMPTS = int(os.getenv('MAX_RESTART_ATTEMPTS', 3))
 CLEANUP_PATHS = [p.strip() for p in os.getenv('CLEANUP_PATHS', '/tmp,/var/tmp,/home/*/tmp').split(',')]
 
 AUTO_HEAL_CPU_THRESHOLD = float(os.getenv('AUTO_HEAL_CPU_THRESHOLD', 90.0))
