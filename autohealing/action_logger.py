@@ -62,12 +62,12 @@ class ActionLogger:
             message=message
         )
     
-    def get_recent_actions(self, limit=50):
-        """Récupère les actions récentes depuis le fichier de log"""
-        try:
-            with open(self.log_file, 'r') as f:
-                lines = f.readlines()[-limit:]
-                actions = [json.loads(line.split(' - ', 1)[1]) for line in lines]
-                return actions
-        except (FileNotFoundError, json.JSONDecodeError):
-            return []
+    # def get_recent_actions(self, limit=50):
+    #     """Récupère les actions récentes depuis le fichier de log"""
+    #     try:
+    #         with open(self.log_file, 'r') as f:
+    #             lines = f.readlines()[-limit:]
+    #             actions = [json.loads(line.split(' - ', 1)[1]) for line in lines]
+    #             return actions
+    #     except (FileNotFoundError, json.JSONDecodeError):
+    #         return []

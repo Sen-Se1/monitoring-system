@@ -111,15 +111,15 @@ class AutoHealingTriggers:
         
         return healing_actions
     
-    def enable_auto_healing(self):
-        """Active l'auto-réparation"""
-        self.enabled = True
-        logger.info("✅ Auto-réparation activée")
+    # def enable_auto_healing(self):
+    #     """Active l'auto-réparation"""
+    #     self.enabled = True
+    #     logger.info("✅ Auto-réparation activée")
     
-    def disable_auto_healing(self):
-        """Désactive l'auto-réparation"""
-        self.enabled = False
-        logger.info("❌ Auto-réparation désactivée")
+    # def disable_auto_healing(self):
+    #     """Désactive l'auto-réparation"""
+    #     self.enabled = False
+    #     logger.info("❌ Auto-réparation désactivée")
     
     def get_healing_status(self):
         """Retourne le statut de l'auto-réparation"""

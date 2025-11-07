@@ -119,19 +119,19 @@ class ServiceHealer:
             }
             return False, error_msg, action_details
     
-    def get_service_status(self, service_name):
-        """Vérifie le statut d'un service"""
-        try:
-            result = subprocess.run(
-                ['systemctl', 'is-active', service_name],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            return result.returncode == 0
-        except Exception as e:
-            logger.error(f"Erreur lors de la vérification du service {service_name}: {e}")
-            return False
+    # def get_service_status(self, service_name):
+    #     """Vérifie le statut d'un service"""
+    #     try:
+    #         result = subprocess.run(
+    #             ['systemctl', 'is-active', service_name],
+    #             capture_output=True,
+    #             text=True,
+    #             timeout=10
+    #         )
+    #         return result.returncode == 0
+    #     except Exception as e:
+    #         logger.error(f"Erreur lors de la vérification du service {service_name}: {e}")
+    #         return False
     
     def get_healing_stats(self):
         """Retourne les statistiques de réparation"""
@@ -142,10 +142,10 @@ class ServiceHealer:
             'max_restart_attempts': self.max_restart_attempts
         }
     
-    def reset_attempts(self, service_name=None):
-        """Réinitialise les compteurs de tentatives"""
-        if service_name:
-            if service_name in self.restart_attempts:
-                del self.restart_attempts[service_name]
-        else:
-            self.restart_attempts.clear()
+    # def reset_attempts(self, service_name=None):
+    #     """Réinitialise les compteurs de tentatives"""
+    #     if service_name:
+    #         if service_name in self.restart_attempts:
+    #             del self.restart_attempts[service_name]
+    #     else:
+    #         self.restart_attempts.clear()
