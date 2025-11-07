@@ -6,6 +6,7 @@ Script principal de surveillance système et services - Multi-plateforme
 import time
 import logging
 import platform
+import os
 from config.settings import (
     MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
     DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
@@ -21,12 +22,20 @@ from autohealing.system_healer import SystemHealer
 from autohealing.action_logger import ActionLogger
 from autohealing.triggers import AutoHealingTriggers
 
-# Configuration du logging
+# Créer le dossier logs si nécessaire
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
+# Écrire l'en-tête si le fichier monitoring.log est nouveau
+if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
+    with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        f.write("# timestamp - level - incident_type - message\n")
+
+# Configuration du logging avec format personnalisé
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(LOG_FILE),
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -72,9 +81,15 @@ def display_healing_actions(healing_actions):
     return output
 
 def log_alerts(alerts):
-    """Log les alertes dans le fichier"""
+    """Log les alertes dans le fichier avec le format personnalisé"""
     for alert in alerts:
-        logger.warning(f"{alert['type']} - {alert['message']}")
+        # Formater dans le format: incident_type - message
+        formatted_message = f"{alert['type']} - {alert['message']}"
+        
+        if alert['severity'] == 'CRITIQUE':
+            logger.error(formatted_message)
+        else:
+            logger.warning(formatted_message)
 
 def main():
     """Fonction principale de surveillance"""
