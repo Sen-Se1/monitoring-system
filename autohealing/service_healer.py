@@ -1,10 +1,6 @@
 import subprocess
-import logging
 import os
 from datetime import datetime
-
-# Utiliser le logger principal de monitoring pour les logs généraux
-logger = logging.getLogger('monitoring')
 
 class ServiceHealer:
     def __init__(self, max_restart_attempts=3, action_logger=None):
@@ -25,28 +21,14 @@ class ServiceHealer:
                 # Log dans le log principal via ActionLogger
                 if self.action_logger:
                     self.action_logger.log_action(
-                        action_type=f"service_restart_aborted.{service_name}",
+                        action_type=f"service_restart_aborted",
                         status="FAILED",
-                        message=error_msg
+                        message=error_msg,
+                        details={'service': service_name}
                     )
-                
-                # Log également dans monitoring.log pour tracking général
-                logger.error(error_msg)
                 
                 self.failed_restarts += 1
                 return False, "Maximum de tentatives atteint", None
-            
-            # Log de la tentative dans actions.log
-            attempt_msg = f"Tentative de redémarrage du service {service_name} ({current_attempts + 1}/{self.max_restart_attempts})"
-            if self.action_logger:
-                self.action_logger.log_action(
-                    action_type=f"service_restart_attempt.{service_name}",
-                    status="ATTEMPT",
-                    message=attempt_msg
-                )
-            
-            # Log également dans monitoring.log
-            logger.info(attempt_msg)
             
             # Tenter de redémarrer le service
             result = subprocess.run(
@@ -70,11 +52,10 @@ class ServiceHealer:
                 
                 if status_result.returncode == 0:
                     success_msg = f"Service {service_name} redémarré avec succès"
-                    logger.info(success_msg)
                     self.restart_attempts[service_name] = 0  # Réinitialiser le compteur
                     self.successful_restarts += 1
                     
-                    # Log détaillé dans actions.log
+                    # Log détaillé
                     action_details = {
                         'service': service_name,
                         'action': 'restart_service',
@@ -85,7 +66,6 @@ class ServiceHealer:
                     return True, success_msg, action_details
                 else:
                     warning_msg = f"Service {service_name} redémarré mais toujours inactif"
-                    logger.warning(warning_msg)
                     self.restart_attempts[service_name] = current_attempts + 1
                     self.failed_restarts += 1
                     
@@ -100,7 +80,6 @@ class ServiceHealer:
                     return False, warning_msg, action_details
             else:
                 error_msg = f"Échec du redémarrage de {service_name}: {result.stderr}"
-                logger.error(error_msg)
                 self.restart_attempts[service_name] = current_attempts + 1
                 self.failed_restarts += 1
                 
@@ -116,7 +95,6 @@ class ServiceHealer:
                 
         except subprocess.TimeoutExpired:
             error_msg = f"Timeout lors du redémarrage de {service_name}"
-            logger.error(error_msg)
             self.restart_attempts[service_name] = current_attempts + 1
             self.failed_restarts += 1
             
@@ -132,7 +110,6 @@ class ServiceHealer:
             
         except Exception as e:
             error_msg = f"Erreur lors du redémarrage de {service_name}: {e}"
-            logger.error(error_msg)
             self.restart_attempts[service_name] = current_attempts + 1
             self.failed_restarts += 1
             

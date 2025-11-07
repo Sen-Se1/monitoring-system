@@ -4,7 +4,6 @@ Script principal de surveillance système et services - Multi-plateforme
 """
 
 import time
-import logging
 import platform
 import os
 from config.settings import (
@@ -20,34 +19,10 @@ from autohealing.service_healer import ServiceHealer
 from autohealing.system_healer import SystemHealer
 from autohealing.action_logger import ActionLogger
 from autohealing.triggers import AutoHealingTriggers
+from utils.json_array_logger import JSONArrayLogger
 
-# Créer le dossier logs si nécessaire
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-
-# Configuration du logging principal pour monitoring.log
-monitoring_logger = logging.getLogger('monitoring')
-monitoring_logger.setLevel(getattr(logging, LOG_LEVEL))
-monitoring_logger.propagate = False
-
-# Éviter les handlers dupliqués
-if not monitoring_logger.handlers:
-    # Handler pour le fichier monitoring.log
-    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(file_formatter)
-    monitoring_logger.addHandler(file_handler)
-    
-    # Handler pour la console
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(file_formatter)
-    monitoring_logger.addHandler(console_handler)
-
-# Écrire l'en-tête si le fichier monitoring.log est nouveau
-if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
-    with open(LOG_FILE, 'w', encoding='utf-8') as f:
-        f.write("# timestamp - level - message\n")
-
-logger = monitoring_logger
+# Initialisation du logger JSON array
+json_logger = JSONArrayLogger(LOG_FILE)
 
 def display_system_info(auto_healing_enabled):
     """Affiche les informations du système"""
@@ -88,28 +63,53 @@ def display_healing_actions(healing_actions):
         output += f"   {icon} {action_type}: {message}\n"
     return output
 
-def log_alerts(alerts):
-    """Log les alertes dans monitoring.log"""
+def log_metrics_to_json(metrics, json_logger):
+    """Log les métriques en JSON (sans affichage console)"""
+    json_logger.log_metric('system', {
+        'cpu_percent': metrics['cpu'],
+        'memory_percent': metrics['memory'],
+        'disk_percent': metrics['disk'],
+        'network_sent_mb': metrics['network']['sent_mb'],
+        'network_recv_mb': metrics['network']['recv_mb'],
+        'total_network_mb': metrics['network']['sent_mb'] + metrics['network']['recv_mb']
+    }, {
+        'timestamp': metrics['timestamp']
+    })
+
+def log_alerts_to_json(alerts, json_logger):
+    """Log les alertes en JSON (sans affichage console)"""
     for alert in alerts:
-        formatted_message = f"{alert['type']} - {alert['message']}"
-        
-        if alert['severity'] == 'CRITIQUE':
-            logger.error(formatted_message)
-        else:
-            logger.warning(formatted_message)
+        json_logger.log_alert(
+            alert_type=alert['type'],
+            severity=alert['severity'],
+            message=alert['message'],
+            details={
+                'value': alert.get('value'),
+                'threshold': alert.get('threshold'),
+                'service': alert.get('service')
+            }
+        )
+
+def log_services_to_json(services_status, json_logger):
+    """Log le statut des services en JSON (sans affichage console)"""
+    for service, status in services_status.items():
+        json_logger.log_metric('service_status', {
+            'service': service,
+            'status': 'active' if status else 'inactive'
+        })
 
 def main():
     """Fonction principale de surveillance"""
-    logger.info("🚀 Démarrage du système de surveillance...")
     print("🚀 Démarrage du système de surveillance...")
+    json_logger.log_system_event('start', "Démarrage du système de surveillance")
     
     # Initialisation des modules de surveillance
     system_monitor = SystemMonitor()
     service_monitor = ServiceMonitor(MONITORED_SERVICES)
     alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD)
     
-    # Initialisation des modules d'auto-réparation (plus de fichier séparé)
-    action_logger = ActionLogger(enabled=True)
+    # Initialisation des modules d'auto-réparation
+    action_logger = ActionLogger(enabled=True, json_logger=json_logger)
     service_healer = ServiceHealer(max_restart_attempts=MAX_RESTART_ATTEMPTS, action_logger=action_logger)
     system_healer = SystemHealer(cleanup_paths=CLEANUP_PATHS)
     healing_triggers = AutoHealingTriggers(service_healer, system_healer, action_logger)
@@ -122,8 +122,8 @@ def main():
     try:
         while True:
             cycle_count += 1
-            logger.info(f"Cycle de surveillance #{cycle_count}")
             print(f"\n🔄 Cycle de surveillance #{cycle_count}")
+            json_logger.log_system_event('monitoring_cycle', f"Cycle de surveillance #{cycle_count}")
             
             # Récupération des métriques
             metrics = system_monitor.check_all_metrics()
@@ -139,7 +139,12 @@ def main():
             if AUTO_HEALING_ENABLED:
                 healing_actions = healing_triggers.evaluate_and_heal(metrics, services_status)
             
-            # Affichage des résultats
+            # Log en JSON (sans affichage console)
+            log_metrics_to_json(metrics, json_logger)
+            log_services_to_json(services_status, json_logger)
+            log_alerts_to_json(all_alerts, json_logger)
+            
+            # Affichage des résultats (SEULEMENT ICI pour éviter les doublons)
             display_system_metrics(metrics)
             display_services_status(services_status)
             
@@ -152,24 +157,21 @@ def main():
                 healing_display = display_healing_actions(healing_actions)
                 print(healing_display)
             
-            # Log des alertes
-            log_alerts(all_alerts)
-            
             print("-" * 60)
             
             # Affichage des statistiques occasionnellement
             if cycle_count % 10 == 0:
                 stats = healing_triggers.get_healing_status()
                 stats_msg = f"Statistiques auto-réparation: {stats['service_stats']['successful_restarts']} services redémarrés, {stats['system_stats']['cleanup_actions']} nettoyages effectués"
-                logger.info(stats_msg)
+                json_logger.log_system_event('statistics', stats_msg)
                 print(f"📈 {stats_msg}")
             
             # Attente avant le prochain check
             time.sleep(MONITORING_INTERVAL)
             
     except KeyboardInterrupt:
-        logger.info("Arrêt du système de surveillance")
         print("\n🛑 Arrêt du système de surveillance")
+        json_logger.log_system_event('shutdown', "Arrêt du système de surveillance")
         
         # Afficher les statistiques finales
         if AUTO_HEALING_ENABLED:
@@ -181,9 +183,8 @@ def main():
             print(f"   Processus terminés: {stats['system_stats']['process_kills']}")
         
     except Exception as e:
-        error_msg = f"Erreur critique: {e}"
-        logger.error(error_msg)
-        print(f"❌ {error_msg}")
+        print(f"❌ Erreur critique: {e}")
+        json_logger.log_system_event('error', f"Erreur critique: {e}")
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,8 @@
 import subprocess
-import logging
 import shutil
 import os
 import glob
 from datetime import datetime
-
-# Utiliser le logger principal de monitoring
-logger = logging.getLogger('monitoring')
 
 class SystemHealer:
     def __init__(self, cleanup_paths=None):
@@ -20,8 +16,6 @@ class SystemHealer:
         try:
             total_freed = 0
             cleaned_paths = []
-            
-            logger.info("Nettoyage des fichiers temporaires...")
             
             for path_pattern in self.cleanup_paths:
                 try:
@@ -61,13 +55,12 @@ class SystemHealer:
                                 })
                                 
                 except Exception as e:
-                    logger.warning(f"Impossible de nettoyer {path_pattern}: {e}")
+                    pass
             
             self.cleanup_actions += 1
             
             if total_freed > 0:
                 freed_mb = round(total_freed / (1024 * 1024), 2)
-                logger.info(f"Nettoyage terminé: {freed_mb} MB libérés")
                 
                 action_details = {
                     'action': 'cleanup_temp_files',
@@ -78,8 +71,6 @@ class SystemHealer:
                 }
                 return True, f"{freed_mb} MB libérés", action_details
             else:
-                logger.info("Aucun fichier à nettoyer")
-                
                 action_details = {
                     'action': 'cleanup_temp_files',
                     'status': 'no_action',
@@ -90,7 +81,6 @@ class SystemHealer:
                 
         except Exception as e:
             error_msg = f"Erreur lors du nettoyage: {e}"
-            logger.error(error_msg)
             
             action_details = {
                 'action': 'cleanup_temp_files',
@@ -103,8 +93,6 @@ class SystemHealer:
     def clear_cache(self):
         """Vide les caches système"""
         try:
-            logger.info("Nettoyage des caches système...")
-            
             # Synchronisation des systèmes de fichiers
             subprocess.run(['sync'], capture_output=True, timeout=10)
             
@@ -114,7 +102,6 @@ class SystemHealer:
                     f.write('3')  # Nettoyer pagecache, dentries et inodes
                 
                 self.cache_clears += 1
-                logger.info("Caches système nettoyés")
                 
                 action_details = {
                     'action': 'clear_cache',
@@ -123,8 +110,6 @@ class SystemHealer:
                 }
                 return True, "Caches système nettoyés", action_details
             else:
-                logger.info("Nettoyage des caches non supporté sur ce système")
-                
                 action_details = {
                     'action': 'clear_cache',
                     'status': 'not_supported',
@@ -135,7 +120,6 @@ class SystemHealer:
                 
         except Exception as e:
             error_msg = f"Erreur lors du nettoyage des caches: {e}"
-            logger.error(error_msg)
             
             action_details = {
                 'action': 'clear_cache',
@@ -149,8 +133,6 @@ class SystemHealer:
         """Tue les processus utilisant trop de mémoire"""
         try:
             import psutil
-            
-            logger.info(f"Recherche de processus utilisant plus de {threshold_percent}% de mémoire...")
             
             processes_to_kill = []
             for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'username']):
@@ -169,12 +151,10 @@ class SystemHealer:
                 
                 # Ne tuer que le processus le plus gourmand
                 target_process = processes_to_kill[0]
-                logger.warning(f"Processus gourmand détecté: {target_process['name']} (PID: {target_process['pid']}) - {target_process['memory_percent']:.1f}% mémoire")
                 
                 try:
                     os.kill(target_process['pid'], 9)
                     self.process_kills += 1
-                    logger.info(f"Processus {target_process['name']} (PID: {target_process['pid']}) terminé")
                     
                     action_details = {
                         'action': 'kill_process',
@@ -187,7 +167,6 @@ class SystemHealer:
                     return True, f"Processus {target_process['name']} terminé", action_details
                 except Exception as e:
                     error_msg = f"Impossible de tuer le processus {target_process['name']}: {e}"
-                    logger.error(error_msg)
                     
                     action_details = {
                         'action': 'kill_process',
@@ -199,8 +178,6 @@ class SystemHealer:
                     }
                     return False, error_msg, action_details
             else:
-                logger.info("Aucun processus gourmand détecté")
-                
                 action_details = {
                     'action': 'kill_process',
                     'status': 'no_action',
@@ -211,7 +188,6 @@ class SystemHealer:
                 
         except Exception as e:
             error_msg = f"Erreur lors de la gestion des processus: {e}"
-            logger.error(error_msg)
             
             action_details = {
                 'action': 'kill_process',

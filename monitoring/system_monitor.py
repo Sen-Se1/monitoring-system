@@ -48,13 +48,3 @@ class SystemMonitor:
             'disk': self.check_disk(),
             'network': self.check_network()
         }
-    
-    # def get_detailed_metrics(self):
-    #     """Retourne des métriques détaillées"""
-    #     return {
-    #         'cpu_cores': psutil.cpu_count(),
-    #         'cpu_freq': psutil.cpu_freq().current if psutil.cpu_freq() else None,
-    #         'memory_total_gb': round(psutil.virtual_memory().total / (1024**3), 2),
-    #         'disk_total_gb': round(psutil.disk_usage('/').total / (1024**3), 2),
-    #         'process_count': len(psutil.pids())
-    #     }

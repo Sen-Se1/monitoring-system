@@ -1,7 +1,3 @@
-import logging
-
-logger = logging.getLogger(__name__)
-
 class AlertManager:
     def __init__(self, cpu_threshold, memory_threshold, disk_threshold, network_threshold):
         self.cpu_threshold = cpu_threshold

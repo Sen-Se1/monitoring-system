@@ -1,11 +1,7 @@
-import logging
 from config.settings import (
     AUTO_HEAL_CPU_THRESHOLD, AUTO_HEAL_MEMORY_THRESHOLD, 
     AUTO_HEAL_DISK_THRESHOLD, AUTO_HEALING_ENABLED
 )
-
-# Utiliser le logger principal de monitoring
-logger = logging.getLogger('monitoring')
 
 class AutoHealingTriggers:
     def __init__(self, service_healer, system_healer, action_logger):
@@ -37,8 +33,6 @@ class AutoHealingTriggers:
         
         for service, status in services_status.items():
             if not status:  # Service arrêté
-                logger.warning(f"Service {service} arrêté - Tentative de redémarrage automatique")
-                
                 success, message, details = self.service_healer.restart_service(service)
                 
                 healing_actions.append({
@@ -64,8 +58,6 @@ class AutoHealingTriggers:
         
         # CPU trop élevé
         if cpu_value > AUTO_HEAL_CPU_THRESHOLD:
-            logger.warning(f"CPU élevé ({cpu_value}%) - Nettoyage des caches")
-            
             success, message, details = self.system_healer.clear_cache()
             
             healing_actions.append({
@@ -80,8 +72,6 @@ class AutoHealingTriggers:
         
         # Mémoire trop élevée
         if memory_value > AUTO_HEAL_MEMORY_THRESHOLD:
-            logger.warning(f"Mémoire élevée ({memory_value}%) - Recherche de processus gourmands")
-            
             success, message, details = self.system_healer.kill_process_by_memory(threshold_percent=15.0)
             
             healing_actions.append({
@@ -96,8 +86,6 @@ class AutoHealingTriggers:
         
         # Disque presque plein
         if disk_value > AUTO_HEAL_DISK_THRESHOLD:
-            logger.warning(f"Disque presque plein ({disk_value}%) - Nettoyage des fichiers temporaires")
-            
             success, message, details = self.system_healer.cleanup_temp_files()
             
             healing_actions.append({

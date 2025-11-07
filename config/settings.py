@@ -8,9 +8,9 @@ NETWORK_THRESHOLD = 100.0  # MB par intervalle
 # Services à surveiller
 MONITORED_SERVICES = ["ssh", "cron", "dbus", "network-manager"]
 
-# Configuration des logs - UN SEUL FICHIER MAINTENANT
-LOG_FILE = "logs/monitoring.log"
-LOG_LEVEL = "INFO"
+# Configuration des logs - FORMAT JSON ARRAY MAINTENANT
+LOG_FILE = "logs/monitoring.json"
+LOG_LEVEL = "INFO"  # Gardé pour compatibilité mais non utilisé avec JSONArrayLogger
 
 # Configuration de l'auto-réparation
 AUTO_HEALING_ENABLED = True
