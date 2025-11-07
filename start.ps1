@@ -1,4 +1,4 @@
-Write-Host "🚀 Démarrage du système de surveillance..."
+Write-Host "🚀 Démarrer le script du système de surveillance..."
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Host "❌ Python n'est pas installé. Installation..."
@@ -26,5 +26,4 @@ if (-not (Test-Path "logs")) {
     New-Item -ItemType Directory -Path "logs" | Out-Null
 }
 
-Write-Host "🎯 Démarrage du système de surveillance..."
 python monitor.py

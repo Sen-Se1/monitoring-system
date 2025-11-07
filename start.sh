@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Démarrage du système de surveillance..."
+echo "🚀 Démarrer le script du système de surveillance..."
 
 if ! command -v python3 &> /dev/null; then
     echo "❌ Python3 n'est pas installé. Installation..."
@@ -26,5 +26,4 @@ fi
 echo "📁 Création des dossiers..."
 mkdir -p logs
 
-echo "🎯 Lancement du système de surveillance..."
 python monitor.py

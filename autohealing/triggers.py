@@ -4,7 +4,8 @@ from config.settings import (
     AUTO_HEAL_DISK_THRESHOLD, AUTO_HEALING_ENABLED
 )
 
-logger = logging.getLogger(__name__)
+# Utiliser le logger principal de monitoring
+logger = logging.getLogger('monitoring')
 
 class AutoHealingTriggers:
     def __init__(self, service_healer, system_healer, action_logger):
@@ -36,7 +37,7 @@ class AutoHealingTriggers:
         
         for service, status in services_status.items():
             if not status:  # Service arrêté
-                logger.warning(f"🔴 Service {service} arrêté - Tentative de redémarrage automatique")
+                logger.warning(f"Service {service} arrêté - Tentative de redémarrage automatique")
                 
                 success, message, details = self.service_healer.restart_service(service)
                 
@@ -48,7 +49,7 @@ class AutoHealingTriggers:
                     'details': details
                 })
                 
-                # Log de l'action
+                # Log de l'action dans le log principal via ActionLogger
                 self.action_logger.log_service_restart(service, success, message, details)
         
         return healing_actions
@@ -63,7 +64,7 @@ class AutoHealingTriggers:
         
         # CPU trop élevé
         if cpu_value > AUTO_HEAL_CPU_THRESHOLD:
-            logger.warning(f"🔥 CPU élevé ({cpu_value}%) - Nettoyage des caches")
+            logger.warning(f"CPU élevé ({cpu_value}%) - Nettoyage des caches")
             
             success, message, details = self.system_healer.clear_cache()
             
@@ -79,7 +80,7 @@ class AutoHealingTriggers:
         
         # Mémoire trop élevée
         if memory_value > AUTO_HEAL_MEMORY_THRESHOLD:
-            logger.warning(f"💾 Mémoire élevée ({memory_value}%) - Recherche de processus gourmands")
+            logger.warning(f"Mémoire élevée ({memory_value}%) - Recherche de processus gourmands")
             
             success, message, details = self.system_healer.kill_process_by_memory(threshold_percent=15.0)
             
@@ -95,7 +96,7 @@ class AutoHealingTriggers:
         
         # Disque presque plein
         if disk_value > AUTO_HEAL_DISK_THRESHOLD:
-            logger.warning(f"💽 Disque presque plein ({disk_value}%) - Nettoyage des fichiers temporaires")
+            logger.warning(f"Disque presque plein ({disk_value}%) - Nettoyage des fichiers temporaires")
             
             success, message, details = self.system_healer.cleanup_temp_files()
             
@@ -110,16 +111,6 @@ class AutoHealingTriggers:
             self.action_logger.log_system_healing('cleanup_temp_files', success, message, details)
         
         return healing_actions
-    
-    # def enable_auto_healing(self):
-    #     """Active l'auto-réparation"""
-    #     self.enabled = True
-    #     logger.info("✅ Auto-réparation activée")
-    
-    # def disable_auto_healing(self):
-    #     """Désactive l'auto-réparation"""
-    #     self.enabled = False
-    #     logger.info("❌ Auto-réparation désactivée")
     
     def get_healing_status(self):
         """Retourne le statut de l'auto-réparation"""

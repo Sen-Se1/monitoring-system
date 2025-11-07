@@ -11,8 +11,7 @@ from config.settings import (
     MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
     DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
     LOG_FILE, LOG_LEVEL, 
-    AUTO_HEALING_ENABLED, MAX_RESTART_ATTEMPTS, CLEANUP_PATHS,
-    ACTION_LOG_FILE, LOG_ACTIONS_ENABLED
+    AUTO_HEALING_ENABLED, MAX_RESTART_ATTEMPTS, CLEANUP_PATHS
 )
 from monitoring.system_monitor import SystemMonitor
 from monitoring.service_monitor import ServiceMonitor
@@ -25,21 +24,30 @@ from autohealing.triggers import AutoHealingTriggers
 # Créer le dossier logs si nécessaire
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
+# Configuration du logging principal pour monitoring.log
+monitoring_logger = logging.getLogger('monitoring')
+monitoring_logger.setLevel(getattr(logging, LOG_LEVEL))
+monitoring_logger.propagate = False
+
+# Éviter les handlers dupliqués
+if not monitoring_logger.handlers:
+    # Handler pour le fichier monitoring.log
+    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    monitoring_logger.addHandler(file_handler)
+    
+    # Handler pour la console
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(file_formatter)
+    monitoring_logger.addHandler(console_handler)
+
 # Écrire l'en-tête si le fichier monitoring.log est nouveau
 if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
     with open(LOG_FILE, 'w', encoding='utf-8') as f:
-        f.write("# timestamp - level - incident_type - message\n")
+        f.write("# timestamp - level - message\n")
 
-# Configuration du logging avec format personnalisé
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = monitoring_logger
 
 def display_system_info(auto_healing_enabled):
     """Affiche les informations du système"""
@@ -81,9 +89,8 @@ def display_healing_actions(healing_actions):
     return output
 
 def log_alerts(alerts):
-    """Log les alertes dans le fichier avec le format personnalisé"""
+    """Log les alertes dans monitoring.log"""
     for alert in alerts:
-        # Formater dans le format: incident_type - message
         formatted_message = f"{alert['type']} - {alert['message']}"
         
         if alert['severity'] == 'CRITIQUE':
@@ -93,6 +100,7 @@ def log_alerts(alerts):
 
 def main():
     """Fonction principale de surveillance"""
+    logger.info("🚀 Démarrage du système de surveillance...")
     print("🚀 Démarrage du système de surveillance...")
     
     # Initialisation des modules de surveillance
@@ -100,10 +108,10 @@ def main():
     service_monitor = ServiceMonitor(MONITORED_SERVICES)
     alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD)
     
-    # Initialisation des modules d'auto-réparation
-    service_healer = ServiceHealer(max_restart_attempts=MAX_RESTART_ATTEMPTS)
+    # Initialisation des modules d'auto-réparation (plus de fichier séparé)
+    action_logger = ActionLogger(enabled=True)
+    service_healer = ServiceHealer(max_restart_attempts=MAX_RESTART_ATTEMPTS, action_logger=action_logger)
     system_healer = SystemHealer(cleanup_paths=CLEANUP_PATHS)
-    action_logger = ActionLogger(log_file=ACTION_LOG_FILE, enabled=LOG_ACTIONS_ENABLED)
     healing_triggers = AutoHealingTriggers(service_healer, system_healer, action_logger)
     
     display_system_info(AUTO_HEALING_ENABLED)
@@ -114,6 +122,7 @@ def main():
     try:
         while True:
             cycle_count += 1
+            logger.info(f"Cycle de surveillance #{cycle_count}")
             print(f"\n🔄 Cycle de surveillance #{cycle_count}")
             
             # Récupération des métriques
@@ -151,13 +160,15 @@ def main():
             # Affichage des statistiques occasionnellement
             if cycle_count % 10 == 0:
                 stats = healing_triggers.get_healing_status()
-                print(f"📈 Statistiques auto-réparation: {stats['service_stats']['successful_restarts']} services redémarrés, "
-                      f"{stats['system_stats']['cleanup_actions']} nettoyages effectués")
+                stats_msg = f"Statistiques auto-réparation: {stats['service_stats']['successful_restarts']} services redémarrés, {stats['system_stats']['cleanup_actions']} nettoyages effectués"
+                logger.info(stats_msg)
+                print(f"📈 {stats_msg}")
             
             # Attente avant le prochain check
             time.sleep(MONITORING_INTERVAL)
             
     except KeyboardInterrupt:
+        logger.info("Arrêt du système de surveillance")
         print("\n🛑 Arrêt du système de surveillance")
         
         # Afficher les statistiques finales
@@ -169,7 +180,6 @@ def main():
             print(f"   Caches vidés: {stats['system_stats']['cache_clears']}")
             print(f"   Processus terminés: {stats['system_stats']['process_kills']}")
         
-        logger.info("Arrêt du système de surveillance")
     except Exception as e:
         error_msg = f"Erreur critique: {e}"
         logger.error(error_msg)

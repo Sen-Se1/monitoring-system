@@ -3,14 +3,16 @@ import logging
 import os
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
+# Utiliser le logger principal de monitoring pour les logs généraux
+logger = logging.getLogger('monitoring')
 
 class ServiceHealer:
-    def __init__(self, max_restart_attempts=3):
+    def __init__(self, max_restart_attempts=3, action_logger=None):
         self.max_restart_attempts = max_restart_attempts
         self.restart_attempts = {}  # Pour suivre les tentatives par service
         self.successful_restarts = 0
         self.failed_restarts = 0
+        self.action_logger = action_logger
     
     def restart_service(self, service_name):
         """Tente de redémarrer un service automatiquement"""
@@ -18,11 +20,33 @@ class ServiceHealer:
             # Vérifier si on n'a pas dépassé le nombre maximum de tentatives
             current_attempts = self.restart_attempts.get(service_name, 0)
             if current_attempts >= self.max_restart_attempts:
-                logger.error(f"❌ Trop de tentatives de redémarrage pour {service_name} ({current_attempts}/{self.max_restart_attempts})")
+                error_msg = f"Trop de tentatives de redémarrage pour {service_name} ({current_attempts}/{self.max_restart_attempts})"
+                
+                # Log dans le log principal via ActionLogger
+                if self.action_logger:
+                    self.action_logger.log_action(
+                        action_type=f"service_restart_aborted.{service_name}",
+                        status="FAILED",
+                        message=error_msg
+                    )
+                
+                # Log également dans monitoring.log pour tracking général
+                logger.error(error_msg)
+                
                 self.failed_restarts += 1
-                return False, "Maximum de tentatives atteint"
+                return False, "Maximum de tentatives atteint", None
             
-            logger.info(f"🔄 Tentative de redémarrage du service {service_name} ({current_attempts + 1}/{self.max_restart_attempts})")
+            # Log de la tentative dans actions.log
+            attempt_msg = f"Tentative de redémarrage du service {service_name} ({current_attempts + 1}/{self.max_restart_attempts})"
+            if self.action_logger:
+                self.action_logger.log_action(
+                    action_type=f"service_restart_attempt.{service_name}",
+                    status="ATTEMPT",
+                    message=attempt_msg
+                )
+            
+            # Log également dans monitoring.log
+            logger.info(attempt_msg)
             
             # Tenter de redémarrer le service
             result = subprocess.run(
@@ -45,11 +69,12 @@ class ServiceHealer:
                 )
                 
                 if status_result.returncode == 0:
-                    logger.info(f"✅ Service {service_name} redémarré avec succès")
+                    success_msg = f"Service {service_name} redémarré avec succès"
+                    logger.info(success_msg)
                     self.restart_attempts[service_name] = 0  # Réinitialiser le compteur
                     self.successful_restarts += 1
                     
-                    # Log détaillé
+                    # Log détaillé dans actions.log
                     action_details = {
                         'service': service_name,
                         'action': 'restart_service',
@@ -57,9 +82,10 @@ class ServiceHealer:
                         'attempt_number': current_attempts + 1,
                         'timestamp': datetime.now().isoformat()
                     }
-                    return True, "Service redémarré avec succès", action_details
+                    return True, success_msg, action_details
                 else:
-                    logger.warning(f"⚠️ Service {service_name} redémarré mais toujours inactif")
+                    warning_msg = f"Service {service_name} redémarré mais toujours inactif"
+                    logger.warning(warning_msg)
                     self.restart_attempts[service_name] = current_attempts + 1
                     self.failed_restarts += 1
                     
@@ -71,9 +97,10 @@ class ServiceHealer:
                         'message': 'Service redémarré mais toujours inactif',
                         'timestamp': datetime.now().isoformat()
                     }
-                    return False, "Service redémarré mais toujours inactif", action_details
+                    return False, warning_msg, action_details
             else:
-                logger.error(f"❌ Échec du redémarrage de {service_name}: {result.stderr}")
+                error_msg = f"Échec du redémarrage de {service_name}: {result.stderr}"
+                logger.error(error_msg)
                 self.restart_attempts[service_name] = current_attempts + 1
                 self.failed_restarts += 1
                 
@@ -85,7 +112,7 @@ class ServiceHealer:
                     'error': result.stderr,
                     'timestamp': datetime.now().isoformat()
                 }
-                return False, f"Échec du redémarrage: {result.stderr}", action_details
+                return False, error_msg, action_details
                 
         except subprocess.TimeoutExpired:
             error_msg = f"Timeout lors du redémarrage de {service_name}"
@@ -119,20 +146,6 @@ class ServiceHealer:
             }
             return False, error_msg, action_details
     
-    # def get_service_status(self, service_name):
-    #     """Vérifie le statut d'un service"""
-    #     try:
-    #         result = subprocess.run(
-    #             ['systemctl', 'is-active', service_name],
-    #             capture_output=True,
-    #             text=True,
-    #             timeout=10
-    #         )
-    #         return result.returncode == 0
-    #     except Exception as e:
-    #         logger.error(f"Erreur lors de la vérification du service {service_name}: {e}")
-    #         return False
-    
     def get_healing_stats(self):
         """Retourne les statistiques de réparation"""
         return {
@@ -141,11 +154,3 @@ class ServiceHealer:
             'restart_attempts': self.restart_attempts,
             'max_restart_attempts': self.max_restart_attempts
         }
-    
-    # def reset_attempts(self, service_name=None):
-    #     """Réinitialise les compteurs de tentatives"""
-    #     if service_name:
-    #         if service_name in self.restart_attempts:
-    #             del self.restart_attempts[service_name]
-    #     else:
-    #         self.restart_attempts.clear()
