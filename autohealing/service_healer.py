@@ -1,5 +1,4 @@
 import subprocess
-import os
 from datetime import datetime
 
 class ServiceHealer:

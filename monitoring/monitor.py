@@ -1,15 +1,9 @@
-#!/usr/bin/env python3
-"""
-Script principal de surveillance système et services - Multi-plateforme
-"""
-
 import time
 import platform
-import os
 from config.settings import (
     MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
     DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
-    LOG_FILE, LOG_LEVEL, 
+    LOG_FILE, 
     AUTO_HEALING_ENABLED, MAX_RESTART_ATTEMPTS, CLEANUP_PATHS
 )
 from monitoring.system_monitor import SystemMonitor

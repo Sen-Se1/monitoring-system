@@ -1,12 +1,5 @@
-#!/usr/bin/env python3
-"""
-Script principal pour lancer la surveillance ET le tableau de bord
-"""
-
 import threading
 import time
-import os
-import sys
 from monitoring.monitor import main as monitoring_main
 from visualization.dashboard import MonitoringDashboard
 
@@ -28,15 +21,9 @@ def main():
     print("⏳ Démarrage dans 3 secondes...")
     time.sleep(3)
     
-    # Créer les dossiers nécessaires
-    os.makedirs("logs", exist_ok=True)
-    os.makedirs("visualization", exist_ok=True)
-    
-    # Lancer le tableau de bord dans un thread séparé
     dashboard_thread = threading.Thread(target=run_dashboard, daemon=True)
     dashboard_thread.start()
     
-    # Lancer la surveillance dans le thread principal
     try:
         run_monitoring()
     except KeyboardInterrupt:

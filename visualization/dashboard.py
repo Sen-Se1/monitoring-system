@@ -1,7 +1,5 @@
 import json
 import os
-import time
-import threading
 from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
@@ -372,7 +370,6 @@ class MonitoringDashboard:
                 ], width=12)
             ]),
             
-            # Update Interval
             dcc.Interval(
                 id='interval-component',
                 interval=5*1000,  # 5 secondes
