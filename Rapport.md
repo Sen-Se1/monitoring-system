@@ -154,12 +154,12 @@ python main.py
 
 #### Surveillance Seule
 ```bash
-python monitor.py
+python monitoring/monitor.py
 ```
 
 #### Tableau de Bord Seul
 ```bash
-python dashboard.py
+python visualization/dashboard.py
 ```
 
 ### Accès au Tableau de Bord
@@ -167,14 +167,11 @@ python dashboard.py
 - **Port Configurable** : Modifiable dans `main.py`
 - **Rafraîchissement Automatique** : Toutes les 5 secondes
 
-## 📁 Structure du Projet
+## 📁 Structure du Projet (Corrigée)
 
 ```
 monitoring-system/
 ├── 📊 main.py                    # Point d'entrée principal
-├── 🔧 monitor.py                 # Système de surveillance
-├── 📈 dashboard.py              # Tableau de bord
-├── ⚙️ settings.py               # Configuration
 ├── 📋 requirements.txt          # Dépendances Python
 ├── 🔐 .env                      # Variables d'environnement
 ├── 📄 README.md                 # Documentation
@@ -183,7 +180,12 @@ monitoring-system/
 ├── 📁 monitoring/               # Modules de surveillance
 │   ├── 🖥️ system_monitor.py    # Métriques système
 │   ├── 🔌 service_monitor.py   # Surveillance services
-│   └── 🚨 alert_manager.py     # Gestionnaire d'alertes
+│   ├── 🚨 alert_manager.py     # Gestionnaire d'alertes
+│   └── 🔧 monitor.py           # Système de surveillance principal
+├── 📁 visualization/            # Interface utilisateur
+│   └── 📈 dashboard.py         # Tableau de bord interactif
+├── 📁 config/                   # Configuration
+│   └── ⚙️ settings.py          # Paramètres de configuration
 ├── 📁 autohealing/             # Modules d'auto-réparation
 │   ├── 🔧 service_healer.py    # Réparation services
 │   ├── 🛠️ system_healer.py    # Réparation système
@@ -204,6 +206,40 @@ monitoring-system/
 - **Dash/Plotly** : Tableau de bord interactif
 - **smtplib** : Notifications email
 - **JSON** : Format de logging structuré
+
+### Modules Clés
+
+#### 📊 monitoring/monitor.py
+**Fonctionnalités principales :**
+- Orchestration de la surveillance complète
+- Coordination entre les différents modules
+- Gestion du cycle de surveillance
+- Affichage unifié des résultats
+
+**Points forts :**
+- Gestion centralisée des logs JSON
+- Intégration transparente avec l'auto-réparation
+- Affichage cohérent dans la console
+
+#### 📈 visualization/dashboard.py
+**Fonctionnalités principales :**
+- Interface web interactive avec Dash
+- Graphiques temps réel avec Plotly
+- Mise à jour automatique toutes les 5 secondes
+- Visualisation des métriques historiques
+
+**Composants :**
+- Métriques système en temps réel
+- État des services
+- Historique des alertes
+- Journal des actions d'auto-réparation
+
+#### ⚙️ config/settings.py
+**Configuration centralisée :**
+- Chargement des variables d'environnement
+- Définition des seuils de surveillance
+- Configuration des services monitorés
+- Paramètres d'auto-réparation et d'email
 
 ### Format des Logs JSON
 ```json
@@ -326,5 +362,3 @@ Ce projet est distribué sous licence MIT. Voir le fichier `LICENSE` pour plus d
 - Développement principal et architecture  
 - Modules de surveillance et d'auto-réparation  
 - Interface utilisateur et tableau de bord  
-
-*Dernière mise à jour : Janvier 2024*
