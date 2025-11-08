@@ -201,11 +201,39 @@ monitoring-system/
 ## 🔧 Détails Techniques
 
 ### Technologies Utilisées
-- **Python 3.8+** : Langage principal
-- **psutil** : Métriques système
-- **Dash/Plotly** : Tableau de bord interactif
-- **smtplib** : Notifications email
-- **JSON** : Format de logging structuré
+
+# **Langage et Environnement**
+- **Python 3.8+** : Langage de programmation principal pour le développement du système
+- **Virtual Environment** : Isolation des dépendances et gestion des packages
+
+# **Surveillance et Métriques Système**
+- **psutil** : Collecte des métriques système (CPU, mémoire, disque, réseau, processus)
+- **subprocess** : Exécution de commandes système et gestion des services
+- **platform** : Détection du système d'exploitation et informations hardware
+
+# **Tableau de Bord et Visualisation**
+- **Dash** : Framework web pour créer des applications analytiques interactives
+- **Plotly** : Bibliothèque de visualisation pour graphiques interactifs et temps réel
+- **Pandas** : Manipulation et analyse des données pour le traitement des métriques
+- **Dash Bootstrap Components** : Composants UI responsives pour l'interface
+
+# **Gestion des Données et Logging**
+- **JSON** : Format de logging structuré pour le stockage des événements
+- **datetime** : Gestion des horodatages et calculs temporels
+- **threading** : Exécution parallèle pour la surveillance et le dashboard
+
+# **Notification et Communication**
+- **smtplib** : Envoi de notifications email via protocole SMTP/TLS
+- **email.mime** : Formatage des messages email avec support HTML
+
+# **Configuration et Gestion**
+- **python-dotenv** : Chargement des variables d'environnement depuis le fichier .env
+- **os** : Interactions avec le système de fichiers et variables d'environnement
+
+# **Utilitaires et Sécurité**
+- **re** : Expressions régulières pour le nettoyage des données
+- **glob** : Recherche de fichiers avec patterns pour le nettoyage automatique
+- **time** : Gestion des intervalles et pauses dans la surveillance
 
 ### Modules Clés
 
