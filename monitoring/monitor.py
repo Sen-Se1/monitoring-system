@@ -1,10 +1,13 @@
 import time
 import platform
+from datetime import datetime
 from config.settings import (
     MONITORING_INTERVAL, CPU_THRESHOLD, MEMORY_THRESHOLD, 
     DISK_THRESHOLD, NETWORK_THRESHOLD, MONITORED_SERVICES, 
     LOG_FILE, 
-    AUTO_HEALING_ENABLED, CLEANUP_PATHS
+    AUTO_HEALING_ENABLED, CLEANUP_PATHS,
+    EMAIL_ALERTS_ENABLED, EMAIL_SMTP_SERVER, EMAIL_SMTP_PORT, 
+    EMAIL_SENDER, EMAIL_SENDER_PASSWORD, EMAIL_RECIPIENTS
 )
 from monitoring.system_monitor import SystemMonitor
 from monitoring.service_monitor import ServiceMonitor
@@ -14,11 +17,12 @@ from autohealing.system_healer import SystemHealer
 from autohealing.action_logger import ActionLogger
 from autohealing.triggers import AutoHealingTriggers
 from utils.json_array_logger import JSONArrayLogger
+from utils.email_sender import EmailSender
 
 # Initialisation du logger JSON array
 json_logger = JSONArrayLogger(LOG_FILE)
 
-def display_system_info(auto_healing_enabled):
+def display_system_info(auto_healing_enabled, email_alerts_enabled):
     """Affiche les informations du système"""
     system = platform.system()
     version = platform.version()
@@ -27,6 +31,7 @@ def display_system_info(auto_healing_enabled):
     print(f"📊 Seuils - CPU: {CPU_THRESHOLD}%, Mémoire: {MEMORY_THRESHOLD}%, Disque: {DISK_THRESHOLD}%, Réseau: {NETWORK_THRESHOLD}MB")
     print(f"🔧 Services surveillés: {', '.join(MONITORED_SERVICES)}")
     print(f"⚡ Auto-réparation: {'ACTIVÉE' if auto_healing_enabled else 'DÉSACTIVÉE'}")
+    print(f"📧 Alertes Email: {'ACTIVÉES' if email_alerts_enabled else 'DÉSACTIVÉES'}")
 
 def display_system_metrics(metrics):
     """Affiche les métriques système"""
@@ -97,18 +102,32 @@ def main():
     print("🚀 Démarrage du système de surveillance...")
     json_logger.log_system_event('start', "Démarrage du système de surveillance")
     
+    email_sender = None
+    if EMAIL_ALERTS_ENABLED and EMAIL_SENDER and EMAIL_SENDER_PASSWORD and EMAIL_RECIPIENTS:
+        try:
+            email_sender = EmailSender(
+                smtp_server=EMAIL_SMTP_SERVER,
+                smtp_port=EMAIL_SMTP_PORT,
+                sender_email=EMAIL_SENDER,
+                sender_password=EMAIL_SENDER_PASSWORD
+            )
+            print("✅ Système d'email initialisé")
+        except Exception as e:
+            print(f"❌ Erreur lors de l'initialisation du système d'email: {e}")
+            email_sender = None
+    
     # Initialisation des modules de surveillance
     system_monitor = SystemMonitor()
     service_monitor = ServiceMonitor(MONITORED_SERVICES)
-    alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD)
+    alert_manager = AlertManager(CPU_THRESHOLD, MEMORY_THRESHOLD, DISK_THRESHOLD, NETWORK_THRESHOLD, email_sender)
     
     # Initialisation des modules d'auto-réparation
     action_logger = ActionLogger(enabled=True, json_logger=json_logger)
-    service_healer = ServiceHealer(action_logger=action_logger)  # Plus de max_restart_attempts
+    service_healer = ServiceHealer(action_logger=action_logger)
     system_healer = SystemHealer(cleanup_paths=CLEANUP_PATHS)
     healing_triggers = AutoHealingTriggers(service_healer, system_healer, action_logger)
     
-    display_system_info(AUTO_HEALING_ENABLED)
+    display_system_info(AUTO_HEALING_ENABLED, EMAIL_ALERTS_ENABLED)
     print("=" * 60)
     
     cycle_count = 0

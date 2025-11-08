@@ -64,7 +64,7 @@ class MonitoringDashboard:
                     'type': entry['action_type'],
                     'status': entry['status'],
                     'message': entry['message'],
-                    'service': entry.get('service', 'Système')
+                    'service': entry.get('service', 'N/A')
                 })
         return pd.DataFrame(actions)
     
@@ -161,6 +161,42 @@ class MonitoringDashboard:
                      color=service_counts.values,
                      color_continuous_scale='reds')
         fig.update_layout(showlegend=False, height=300)
+        return fig
+    
+    def create_incidents_by_type_chart(self):
+        """Crée le graphique des incidents par type"""
+        df_alerts = self.get_alerts()
+        df_actions = self.get_actions()
+        
+        if df_alerts.empty and df_actions.empty:
+            return go.Figure().add_annotation(text="Aucun incident enregistré", showarrow=False)
+        
+        # Compter les alertes par type
+        alert_counts = df_alerts['type'].value_counts().reset_index()
+        alert_counts.columns = ['type', 'count']
+        alert_counts['category'] = 'Alerte'
+        
+        # Compter les actions par type (échecs seulement pour les incidents)
+        failed_actions = df_actions[df_actions['status'] == 'FAILED']
+        if not failed_actions.empty:
+            action_counts = failed_actions['type'].value_counts().reset_index()
+            action_counts.columns = ['type', 'count']
+            action_counts['category'] = 'Action Échouée'
+            
+            # Combiner les données
+            all_incidents = pd.concat([alert_counts, action_counts], ignore_index=True)
+        else:
+            all_incidents = alert_counts
+        
+        # Créer le graphique
+        fig = px.bar(all_incidents, x='type', y='count', color='category',
+                    title="Nombre d'Incidents par Type",
+                    labels={'type': "Type d'Incident", 'count': "Nombre d'Occurrences"},
+                    color_discrete_map={
+                        'Alerte': '#FF6B6B',
+                        'Action Échouée': '#FFA726'
+                    })
+        fig.update_layout(height=300, xaxis_tickangle=-45)
         return fig
     
     def create_actions_chart(self):
@@ -304,26 +340,38 @@ class MonitoringDashboard:
                         ])
                     ], className="mb-4 shadow-sm"),
                     
-                    # Bottom Charts Row
+                    # Bottom Charts Row - Three columns
                     dbc.Row([
+                        # Incidents by Type
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader("📊 Incidents par Service", 
+                                dbc.CardHeader("📊 Incidents par Type", 
                                               className="fw-bold bg-warning text-dark"),
+                                dbc.CardBody([
+                                    dcc.Graph(id="incidents-by-type-chart")
+                                ])
+                            ], className="shadow-sm")
+                        ], width=4),
+                        # Incidents by Service
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardHeader("🔧 Incidents par Service", 
+                                              className="fw-bold bg-danger text-white"),
                                 dbc.CardBody([
                                     dcc.Graph(id="alerts-by-service-chart")
                                 ])
                             ], className="shadow-sm")
-                        ], width=6),
+                        ], width=4),
+                        # Actions by Type
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader("🔧 Actions par Type", 
+                                dbc.CardHeader("⚡ Actions par Type", 
                                               className="fw-bold bg-info text-white"),
                                 dbc.CardBody([
                                     dcc.Graph(id="actions-chart")
                                 ])
                             ], className="shadow-sm")
-                        ], width=6)
+                        ], width=4)
                     ])
                 ], width=8),
                 
@@ -380,6 +428,7 @@ class MonitoringDashboard:
         @app.callback(
             [Output('system-metrics-chart', 'figure'),
              Output('alerts-by-service-chart', 'figure'),
+             Output('incidents-by-type-chart', 'figure'),
              Output('actions-chart', 'figure'),
              Output('live-metrics-details', 'children'),
              Output('service-status-table', 'children'),
@@ -397,6 +446,7 @@ class MonitoringDashboard:
             # Créer les graphiques
             system_fig = self.create_system_metrics_chart()
             alerts_service_fig = self.create_alerts_by_service_chart()
+            incidents_type_fig = self.create_incidents_by_type_chart()
             actions_fig = self.create_actions_chart()
             
             # Créer les tableaux
@@ -497,8 +547,8 @@ class MonitoringDashboard:
                 live_metrics = dbc.Alert("⏳ En attente de données de surveillance...", 
                                        color="warning", className="text-center")
             
-            return (system_fig, alerts_service_fig, actions_fig, live_metrics, 
-                   service_table, alerts_table, actions_table)
+            return (system_fig, alerts_service_fig, incidents_type_fig, actions_fig, 
+                   live_metrics, service_table, alerts_table, actions_table)
         
         return app
     
