@@ -42,7 +42,6 @@ class EmailSender:
             <body>
                 <div class="alert">
                     <div class="header">🚨 Alerte Système</div>
-                    <div class="timestamp">Heure: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
                     <div class="details">
                         {message.replace('\n', '<br>')}
                     </div>
