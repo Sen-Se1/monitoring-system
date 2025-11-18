@@ -12,7 +12,6 @@ class JSONArrayLogger:
         self.lock = Lock()
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
         
-        # Initialiser le fichier avec un tableau vide
         if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
             with open(log_file, 'w', encoding='utf-8') as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
@@ -22,7 +21,6 @@ class JSONArrayLogger:
         if not isinstance(text, str):
             return text
         
-        # Pattern pour détecter les emojis
         emoji_pattern = re.compile(
             "["
             u"\U0001F600-\U0001F64F"
@@ -92,11 +90,10 @@ class JSONArrayLogger:
             'event_type': 'alert',
             'alert_type': alert_type,
             'severity': severity,
-            'message': message,  # Les emojis seront nettoyés dans _append_log
+            'message': message,
             'details': details or {}
         }
         self._append_log(log_data)
-        # REMOVED console output - let monitor.py handle display
     
     def log_action(self, action_type, status, service=None, message="", details=None):
         """Log une action d'auto-réparation (SANS affichage console)"""
@@ -106,11 +103,10 @@ class JSONArrayLogger:
             'action_type': action_type,
             'status': status,
             'service': service,
-            'message': message,  # Les emojis seront nettoyés dans _append_log
+            'message': message,
             'details': details or {}
         }
         self._append_log(log_data)
-        # REMOVED console output - let monitor.py handle display
     
     def log_system_event(self, event_type, message, details=None):
         """Log un événement système (SANS affichage console)"""
@@ -118,37 +114,7 @@ class JSONArrayLogger:
             'timestamp': datetime.now().isoformat(),
             'event_type': 'system',
             'system_event_type': event_type,
-            'message': message,  # Les emojis seront nettoyés dans _append_log
+            'message': message,
             'details': details or {}
         }
         self._append_log(log_data)
-        # REMOVED console output - let monitor.py handle display
-    
-    def get_logs(self):
-        """Récupère tous les logs"""
-        try:
-            with open(self.log_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
-    
-    def clear_logs(self):
-        """Efface tous les logs"""
-        with self.lock:
-            with open(self.log_file, 'w', encoding='utf-8') as f:
-                json.dump([], f, indent=2, ensure_ascii=False)
-    
-    def get_metrics_by_type(self, metric_type):
-        """Récupère les métriques d'un type spécifique"""
-        logs = self.get_logs()
-        return [log for log in logs if log.get('event_type') == 'metric' and log.get('metric_type') == metric_type]
-    
-    def get_alerts_by_type(self, alert_type):
-        """Récupère les alertes d'un type spécifique"""
-        logs = self.get_logs()
-        return [log for log in logs if log.get('event_type') == 'alert' and log.get('alert_type') == alert_type]
-    
-    def get_actions_by_type(self, action_type):
-        """Récupère les actions d'un type spécifique"""
-        logs = self.get_logs()
-        return [log for log in logs if log.get('event_type') == 'action' and log.get('action_type') == action_type]

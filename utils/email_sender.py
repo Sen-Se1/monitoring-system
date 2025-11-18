@@ -1,9 +1,8 @@
 import smtplib
-import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
-from typing import List, Dict
+from datetime import datetime
+from typing import List
 
 class EmailSender:
     def __init__(self, smtp_server: str, smtp_port: int, sender_email: str, sender_password: str):
@@ -19,7 +18,6 @@ class EmailSender:
         Retourne True si l'email a été envoyé, False en cas d'erreur
         """
         try:
-            # Créer le message
             msg = MIMEMultipart()
             msg['From'] = self.sender_email
             msg['To'] = ', '.join(recipients)
@@ -57,9 +55,8 @@ class EmailSender:
             
             msg.attach(MIMEText(html_content, 'html'))
             
-            # Connexion au serveur SMTP
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()  # Sécuriser la connexion
+                server.starttls()
                 server.login(self.sender_email, self.sender_password)
                 server.send_message(msg)
             

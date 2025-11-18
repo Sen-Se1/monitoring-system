@@ -10,7 +10,6 @@ class ServiceHealer:
     def restart_service(self, service_name):
         """Tente de redémarrer un service automatiquement (toujours)"""
         try:
-            # Tenter de redémarrer le service (plus de limite de tentatives)
             result = subprocess.run(
                 ['sudo', 'systemctl', 'restart', service_name],
                 capture_output=True,
@@ -19,9 +18,8 @@ class ServiceHealer:
             )
             
             if result.returncode == 0:
-                # Vérifier que le service est bien démarré
                 import time
-                time.sleep(2)  # Attendre un peu que le service démarre
+                time.sleep(2)
                 
                 status_result = subprocess.run(
                     ['systemctl', 'is-active', service_name],
@@ -34,7 +32,6 @@ class ServiceHealer:
                     success_msg = f"Service {service_name} redémarré avec succès"
                     self.successful_restarts += 1
                     
-                    # Log détaillé
                     action_details = {
                         'service': service_name,
                         'action': 'restart_service',

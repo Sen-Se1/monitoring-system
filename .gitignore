@@ -64,3 +64,7 @@ htmlcov/
 # ==============================
 .ipynb_checkpoints/
 *.ipynb
+
+
+*.docx
+*.pdf

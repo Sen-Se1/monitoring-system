@@ -14,7 +14,6 @@ class ActionLogger:
             message=message,
             details=details
         )
-        # REMOVED: No console output here - let monitor.py handle display
     
     def log_service_restart(self, service_name, success, message, details=None):
         """Enregistre spécifiquement un redémarrage de service (sans console)"""
